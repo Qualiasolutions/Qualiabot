@@ -1,13 +1,13 @@
 {
   "files": {
     "main.css": "/qualiabot/static/css/main.c38bf41a.css",
-    "main.js": "/qualiabot/static/js/main.f8902ac1.js",
+    "main.js": "/qualiabot/static/js/main.66d81895.js",
     "index.html": "/qualiabot/index.html",
     "main.c38bf41a.css.map": "/qualiabot/static/css/main.c38bf41a.css.map",
-    "main.f8902ac1.js.map": "/qualiabot/static/js/main.f8902ac1.js.map"
+    "main.66d81895.js.map": "/qualiabot/static/js/main.66d81895.js.map"
   },
   "entrypoints": [
     "static/css/main.c38bf41a.css",
-    "static/js/main.f8902ac1.js"
+    "static/js/main.66d81895.js"
   ]
 }

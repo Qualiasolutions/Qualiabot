@@ -32,6 +32,15 @@
   </div>
   
   <!-- The widget script -->
-  <script src="./widget.js"></script>
+  <script>
+    // Use the correct path for widget.js
+    const isProduction = window.location.hostname !== 'localhost';
+    const scriptSrc = isProduction ? '/qualiabot/widget.js' : './widget.js';
+    
+    // Create script element
+    const script = document.createElement('script');
+    script.src = scriptSrc;
+    document.body.appendChild(script);
+  </script>
 </body>
 </html> 
