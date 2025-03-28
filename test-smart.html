@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QualiaBot Smart Widget Test</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      line-height: 1.6;
+      margin: 0;
+      padding: 20px;
+      color: #333;
+    }
+    header {
+      background: #10121F;
+      color: white;
+      padding: 20px;
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    h1 {
+      margin-top: 0;
+    }
+    .scroll-test {
+      height: 1000px;
+      background: linear-gradient(180deg, #f0f0f0, #ffffff);
+      padding: 20px;
+      margin-top: 20px;
+      border-radius: 8px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>QualiaBot Smart Widget Test</h1>
+  </header>
+  
+  <div class="container">
+    <p>This is a test page for the QualiaBot Smart Widget, which uses local data from sitemapData.json to provide faster responses with fewer API calls.</p>
+    
+    <h2>Testing Features</h2>
+    <ul>
+      <li>Click the chat button in the bottom right corner to open the widget</li>
+      <li>The widget will try to answer questions about Qualia Solutions using local data first</li>
+      <li>It will only call the Perplexity API if it can't find a suitable answer locally</li>
+      <li>Try asking questions like "What services do you offer?" or "How can I contact you?"</li>
+    </ul>
+    
+    <h2>Benefits of the Smart Widget</h2>
+    <ul>
+      <li>Reduced API usage and costs</li>
+      <li>Faster responses for common questions</li>
+      <li>Less reliance on external services</li>
+      <li>Automatic citations to relevant pages</li>
+    </ul>
+    
+    <div class="scroll-test">
+      <h3>Scroll Test Area</h3>
+      <p>This section is here to test that the widget remains in the correct position when scrolling the page.</p>
+      <p>The widget should remain fixed at the bottom right of the viewport.</p>
+    </div>
+  </div>
+
+  <!-- Load the QualiaBot Smart Widget -->
+  <script src="https://qualiasolutions.github.io/qualiabot/smart-widget.js"></script>
+</body>
+</html> 
