@@ -7,10 +7,9 @@
     zIndex: 2147483647,
     initialDelay: 1500,
     perplexityApiKey: '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',
-    maxTokens: 150,
+    maxTokens: 200,
     searchContextSize: 'low',
     maxUsagePerDay: 100,
-    shortResponses: true,
     localDataUrl: 'https://qualiasolutions.github.io/qualiabot/sitemapData.json',
     useLocalData: true
   };
@@ -18,12 +17,12 @@
   // Local data store
   let siteData = null;
 
-  // System prompt for concise but natural responses
-  const SYSTEM_PROMPT = `You are QualiaBot, an AI assistant for Qualia Solutions. Your responses should be helpful, conversational and natural, but still concise (keep to 3-4 sentences max).
+  // System prompt with site context
+  const SYSTEM_PROMPT = `You are QualiaBot, an AI assistant for Qualia Solutions, a web design and AI integration company based in Cyprus.
   
-  You represent Qualia Solutions, a web design and AI integration company based in Cyprus that creates modern websites and helps businesses integrate AI tools.
+  Qualia Solutions provides services including web design, SEO optimization, digital advertising, AI automation, and chatbot development.
   
-  If you can't answer a question or if the user asks about specific quotes, timelines, or contracts, suggest contacting info@qualiasolutions.net.`;
+  If you don't know the answer or if users ask about pricing, contracts, or specific timelines, suggest contacting info@qualiasolutions.net.`;
 
   // Track usage
   let usageKey = 'qualiaBotApiUsage_' + new Date().toISOString().split('T')[0];
@@ -44,10 +43,10 @@
     }
   }
 
-  // Try to find answer in local data
-  function findLocalAnswer(query) {
+  // Get relevant context from site data
+  function getRelevantContext(query) {
     if (!siteData || !config.useLocalData) {
-      return null;
+      return '';
     }
 
     // Normalize query
@@ -90,7 +89,7 @@
     
     // If no results found
     if (results.length === 0) {
-      return null;
+      return '';
     }
     
     // Sort results by score (highest first)
@@ -99,114 +98,22 @@
     // Take top results
     const topResults = results.slice(0, 2);
     
-    // Format a response based on results
-    let response = '';
+    // Build context from top results
+    let context = 'Here is some relevant information from the Qualia Solutions website:\n\n';
     
-    if (topResults.length > 0) {
-      // Get the best match
-      const bestMatch = topResults[0];
-      
-      // Create different responses based on query type
-      if (normalizedQuery.includes("what is") || normalizedQuery.includes("who is") || 
-          normalizedQuery.includes("tell me about") || normalizedQuery.includes("info")) {
-        response = `${bestMatch.title.replace(" | Qualia Solutions", "")} is ${bestMatch.description} `;
-        
-        // Add a bit more detail
-        if (bestMatch.content && bestMatch.content.length > 20) {
-          // Get a relevant sentence from the content
-          const sentences = bestMatch.content.split(/[.!?]+/).filter(s => s.trim().length > 0);
-          if (sentences.length > 0) {
-            let relevantSentence = sentences[0].trim();
-            // Try to find a more relevant sentence if available
-            for (let i = 0; i < sentences.length; i++) {
-              const sentence = sentences[i].toLowerCase();
-              if (keywords.some(kw => sentence.includes(kw))) {
-                relevantSentence = sentences[i].trim();
-                break;
-              }
-            }
-            response += relevantSentence + ". ";
-          }
-        }
-      } else if (normalizedQuery.includes("contact") || normalizedQuery.includes("email") || 
-                normalizedQuery.includes("phone") || normalizedQuery.includes("reach")) {
-        response = `You can contact Qualia Solutions at info@qualiasolutions.net. `;
-        if (bestMatch.content && bestMatch.content.includes("contact")) {
-          // Extract contact-related information
-          const contactStart = bestMatch.content.toLowerCase().indexOf("contact");
-          if (contactStart > 0) {
-            const contactInfo = bestMatch.content.substring(contactStart, contactStart + 150);
-            const cleanedContact = contactInfo.replace(/\s+/g, ' ').trim();
-            response += cleanedContact + " ";
-          }
-        }
-      } else if (normalizedQuery.includes("service") || normalizedQuery.includes("offer") || 
-                normalizedQuery.includes("provide") || normalizedQuery.includes("help")) {
-        response = `Qualia Solutions offers ${bestMatch.description.toLowerCase()} `;
-        if (bestMatch.content) {
-          // Try to find services-related content
-          const serviceKeywords = ["service", "offer", "provide", "specialize", "expert"];
-          let serviceInfo = "";
-          const sentences = bestMatch.content.split(/[.!?]+/).filter(s => s.trim().length > 0);
-          for (const sentence of sentences) {
-            if (serviceKeywords.some(kw => sentence.toLowerCase().includes(kw))) {
-              serviceInfo = sentence.trim() + ". ";
-              break;
-            }
-          }
-          if (serviceInfo) {
-            response += serviceInfo;
-          }
-        }
-      } else {
-        // Default response pattern for other queries
-        response = `${bestMatch.description} `;
-        
-        // Add a relevant excerpt
-        if (bestMatch.content) {
-          const contentLower = bestMatch.content.toLowerCase();
-          let relevantText = "";
-          
-          // Try to find text related to the query
-          const keywords = normalizedQuery.split(/\s+/).filter(k => k.length > 3);
-          for (const keyword of keywords) {
-            const keywordIndex = contentLower.indexOf(keyword);
-            if (keywordIndex >= 0) {
-              // Extract content around the keyword
-              const start = Math.max(0, keywordIndex - 50);
-              const end = Math.min(bestMatch.content.length, keywordIndex + keyword.length + 100);
-              relevantText = bestMatch.content.substring(start, end).trim();
-              break;
-            }
-          }
-          
-          // If no keyword match, use the beginning of the content
-          if (!relevantText && bestMatch.content.length > 20) {
-            relevantText = bestMatch.content.substring(0, 150).trim();
-          }
-          
-          // Add to response if we found relevant text
-          if (relevantText) {
-            // Clean up the text to make it more readable
-            relevantText = relevantText.replace(/\s+/g, ' ').trim();
-            
-            // Make sure it ends with proper punctuation
-            if (!relevantText.endsWith('.') && !relevantText.endsWith('!') && !relevantText.endsWith('?')) {
-              relevantText += '.';
-            }
-            
-            response += relevantText + " ";
-          }
-        }
+    topResults.forEach((result, index) => {
+      context += `Page: ${result.title}\n`;
+      context += `Description: ${result.description}\n`;
+      if (result.content) {
+        const contentSummary = result.content.length > 300 
+          ? result.content.substring(0, 300) + '...' 
+          : result.content;
+        context += `Content: ${contentSummary}\n`;
       }
-      
-      // Add source link
-      if (bestMatch.url) {
-        response += `You can learn more here [[1]](${bestMatch.url})`;
-      }
-    }
+      context += `URL: ${result.url}\n\n`;
+    });
     
-    return response.length > 0 ? response : null;
+    return context;
   }
 
   // Create widget container with styles
@@ -412,7 +319,7 @@
       font-size: 14px;
       line-height: 1.5;
     `;
-    initialMessage.textContent = "Hi there! I'm QualiaBot, your assistant for Qualia Solutions. I can help with questions about our web design services, AI integration, and more. How can I assist you today?";
+    initialMessage.textContent = "Hi! I'm QualiaBot, your assistant for Qualia Solutions. How can I help you today?";
     messagesContainer.appendChild(initialMessage);
     
     // Citations container for styling
@@ -602,34 +509,6 @@
       });
     }
     
-    // Function to handle common queries with natural responses
-    function getPresetResponse(text) {
-      const lowercaseText = text.toLowerCase().trim();
-      
-      // Common greetings
-      if (/^(hi|hello|hey)(\s|$|\W)/i.test(lowercaseText)) {
-        return "Hello! Nice to meet you. I'm QualiaBot, here to help with questions about Qualia Solutions. How can I assist you today?";
-      }
-      
-      // How are you
-      if (/^how are you(\?)?$/i.test(lowercaseText)) {
-        return "I'm doing well, thanks for asking! I'm ready to help with information about Qualia Solutions and our services. How about you?";
-      }
-      
-      // Thank you
-      if (/^(thank you|thanks)(\s|$|\W)/i.test(lowercaseText)) {
-        return "You're welcome! I'm glad I could help. Is there anything else you'd like to know about Qualia Solutions?";
-      }
-      
-      // Goodbye
-      if (/^(bye|goodbye|see you|later)(\s|$|\W)/i.test(lowercaseText)) {
-        return "Thanks for chatting! Feel free to come back if you have more questions about Qualia Solutions. Have a great day!";
-      }
-      
-      // Return null if no preset response matches
-      return null;
-    }
-    
     async function sendMessage() {
       const text = textInput.value.trim();
       if (!text) return;
@@ -637,13 +516,6 @@
       // Add user message to chat
       addMessage(text, true);
       textInput.value = '';
-      
-      // Check for preset responses
-      const presetResponse = getPresetResponse(text);
-      if (presetResponse) {
-        addMessage(presetResponse, false);
-        return;
-      }
       
       // Show typing indicator
       const typingIndicator = document.createElement('div');
@@ -665,31 +537,41 @@
       messagesContainer.scrollTop = messagesContainer.scrollHeight;
       
       try {
-        // Try to find an answer in local data first
-        const localAnswer = findLocalAnswer(text);
-        
-        if (localAnswer) {
-          // Remove typing indicator
-          messagesContainer.removeChild(typingIndicator);
-          
-          // Parse citations and add local response
-          const { cleanText, citations } = parseCitations(localAnswer);
-          addMessage(cleanText, false, citations);
-          return;
-        }
-        
         // Check daily usage limit
         if (dailyUsage >= config.maxUsagePerDay) {
           // Remove typing indicator
           messagesContainer.removeChild(typingIndicator);
           
-          addMessage("I've reached my daily conversation limit. Please contact our team at info@qualiasolutions.net for personalized assistance, or try again tomorrow.", false);
+          addMessage("I've reached my daily limit. Please contact our team at info@qualiasolutions.net for assistance, or try again tomorrow.", false);
           return;
         }
+        
+        // Get relevant context from site data
+        const siteContext = getRelevantContext(text);
         
         // Update usage counter for API call
         dailyUsage++;
         localStorage.setItem(usageKey, dailyUsage.toString());
+        
+        // Create message array with site context
+        const promptMessages = [
+          { role: 'system', content: SYSTEM_PROMPT }
+        ];
+        
+        // Add conversation history (last 4 messages)
+        const historyMessages = messages.slice(-4);
+        promptMessages.push(...historyMessages);
+        
+        // Add site context if available
+        if (siteContext) {
+          promptMessages.push({ 
+            role: 'system', 
+            content: siteContext
+          });
+        }
+        
+        // Add current user query
+        promptMessages.push({ role: 'user', content: text });
         
         // Call Perplexity API with Sonar model
         const response = await fetch('https://api.perplexity.ai/chat/completions', {
@@ -700,10 +582,7 @@
           },
           body: JSON.stringify({
             model: 'sonar',
-            messages: [
-              { role: 'system', content: SYSTEM_PROMPT },
-              { role: 'user', content: text }
-            ],
+            messages: promptMessages,
             temperature: 0.7,
             max_tokens: config.maxTokens,
             search_context_size: config.searchContextSize
@@ -726,7 +605,7 @@
           messagesContainer.removeChild(typingIndicator);
           
           // Add error message
-          addMessage("I'm having a bit of trouble connecting at the moment. Please contact our team at info@qualiasolutions.net for assistance, or try again later.", false);
+          addMessage("I'm having trouble connecting. Please contact info@qualiasolutions.net for assistance.", false);
           console.error('Perplexity API error:', await response.text());
         }
       } catch (error) {
@@ -734,7 +613,7 @@
         messagesContainer.removeChild(typingIndicator);
         
         // Add error message
-        addMessage("I'm having trouble processing your request. Please contact info@qualiasolutions.net for immediate assistance, or try again later.", false);
+        addMessage("I'm having trouble. Please contact info@qualiasolutions.net for assistance.", false);
         console.error('Error calling Perplexity API:', error);
       }
     }
