@@ -6,7 +6,7 @@
     mobileBreakpoint: 768,
     zIndex: 2147483647,
     initialDelay: 1500,
-    perplexityApiKey: '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',
+    perplexityApiKey: '', // Blank by default - user must provide via configure
     maxTokens: 250
   };
 
@@ -305,6 +305,11 @@
         chatContent.style.opacity = '1';
         chatContent.style.visibility = 'visible';
         chatContent.style.transform = 'translateY(0) scale(1)';
+        
+        // Check API key when first opened
+        if (!config.perplexityApiKey) {
+          addMessage("⚠️ API key not configured. Please add a valid Perplexity API key when embedding the widget: QualiaBot.configure({perplexityApiKey: 'your-key-here'})", false);
+        }
       }
       isOpen = !isOpen;
     });
@@ -423,6 +428,12 @@
       addMessage(text, true);
       textInput.value = '';
       
+      // Check for API key
+      if (!config.perplexityApiKey) {
+        addMessage("⚠️ No API key provided. Please configure the widget with a valid Perplexity API key.", false);
+        return;
+      }
+      
       // Show typing indicator
       const typingIndicator = document.createElement('div');
       typingIndicator.className = 'qualia-typing-indicator';
@@ -490,16 +501,35 @@
           // Remove typing indicator
           messagesContainer.removeChild(typingIndicator);
           
+          let errorMsg = "API Error: ";
+          
+          try {
+            const errorJson = await response.json();
+            errorMsg += errorJson.error?.message || `Status ${response.status}`;
+          } catch (e) {
+            errorMsg += `Status ${response.status}`;
+          }
+          
           // Add error message
-          addMessage("I'm having trouble connecting. Please contact info@qualiasolutions.net for assistance.", false);
-          console.error('Perplexity API error:', await response.text());
+          addMessage(`⚠️ ${errorMsg}. Please check your API key or contact info@qualiasolutions.net for assistance.`, false);
+          console.error('Perplexity API error:', errorMsg);
         }
       } catch (error) {
         // Remove typing indicator
-        messagesContainer.removeChild(typingIndicator);
+        if (typingIndicator.parentNode) {
+          messagesContainer.removeChild(typingIndicator);
+        }
         
-        // Add error message
-        addMessage("I'm having trouble. Please contact info@qualiasolutions.net for assistance.", false);
+        // Add specific error message for common issues
+        let errorMessage = "⚠️ ";
+        
+        if (error.message.includes('Failed to fetch')) {
+          errorMessage += "Network error. This may be due to CORS restrictions on Squarespace or an invalid API key. Please ensure your Perplexity API key is valid and has access to the Sonar model.";
+        } else {
+          errorMessage += error.message || "Unknown error";
+        }
+        
+        addMessage(errorMessage, false);
         console.error('Error calling Perplexity API:', error);
       }
     }
@@ -511,6 +541,9 @@
         sendMessage();
       }
     });
+    
+    // Expose message function
+    return { addMessage };
   }
 
   // Initialize everything
@@ -519,7 +552,7 @@
     const container = createWidgetContainer();
     
     // Add chat interface
-    createChatInterface(container);
+    const chatInterface = createChatInterface(container);
     
     // Expose configuration API
     window.QualiaBot = window.QualiaBot || {};
