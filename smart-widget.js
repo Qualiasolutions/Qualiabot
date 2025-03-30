@@ -10,7 +10,18 @@
   };
 
   // System prompt including website context
-  const SYSTEM_PROMPT = `You are QualiaBot, an AI assistant for Qualia Solutions. Provide helpful, accurate, and concise responses about Qualia Solutions' services. Always be professional but friendly. For specific details about quotes, timelines, or contracts, offer to connect users with the team at info@qualiasolutions.net.`;
+  const SYSTEM_PROMPT = `You are QualiaBot, an AI assistant for Qualia Solutions.
+  
+  IMPORTANT GUIDELINES:
+  1. Keep all responses extremely brief and to the point
+  2. For simple greetings like "hi" or "hello" just respond with a quick "Hello! How can I help you with Qualia Solutions' services?"
+  3. Never explain what words mean or give dictionary definitions
+  4. Don't be overly formal or verbose
+  5. Be conversational and natural
+  6. For services information, mention web design, SEO, AI integration, or custom development
+  7. For pricing/timeline questions: "Contact info@qualiasolutions.net for details"
+  
+  Remember: Users want quick, relevant answers about Qualia Solutions services, not lengthy explanations.`;
 
   // Track usage
   let usageKey = 'qualiaBotApiUsage_' + new Date().toISOString().split('T')[0];
@@ -417,6 +428,16 @@
       // Add user message to chat
       addMessage(text, true);
       textInput.value = '';
+      
+      // Simple greeting detection for faster responses
+      const lowerText = text.toLowerCase();
+      const isSimpleGreeting = /^(hi|hello|hey|howdy|yo|hiya|greetings)(\s.*)?$/i.test(lowerText);
+      
+      if (isSimpleGreeting) {
+        // Immediately respond to simple greetings
+        addMessage("Hello! How can I help you with Qualia Solutions' services?", false);
+        return;
+      }
       
       // Show typing indicator
       const typingIndicator = document.createElement('div');
