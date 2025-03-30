@@ -1,4 +1,4 @@
-// QualiaBot Smart Widget with Local Data v1.0.0
+// QualiaBot Widget Embed Script v1.0.0
 (function() {
   // Configuration
   const config = {
@@ -7,114 +7,20 @@
     zIndex: 2147483647,
     initialDelay: 1500,
     perplexityApiKey: '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',
-    maxTokens: 200,
-    searchContextSize: 'low',
-    maxUsagePerDay: 100,
-    localDataUrl: 'https://qualiasolutions.github.io/qualiabot/sitemapData.json',
-    useLocalData: true
+    maxTokens: 250
   };
 
-  // Local data store
-  let siteData = null;
-
-  // System prompt with site context
+  // System prompt for the AI
   const SYSTEM_PROMPT = `You are QualiaBot, an AI assistant for Qualia Solutions, a web design and AI integration company based in Cyprus.
   
   Qualia Solutions provides services including web design, SEO optimization, digital advertising, AI automation, and chatbot development.
   
-  If you don't know the answer or if users ask about pricing, contracts, or specific timelines, suggest contacting info@qualiasolutions.net.`;
+  If users ask about pricing, contracts, or specific timelines, suggest contacting info@qualiasolutions.net.`;
 
   // Track usage
   let usageKey = 'qualiaBotApiUsage_' + new Date().toISOString().split('T')[0];
   let dailyUsage = parseInt(localStorage.getItem(usageKey) || '0');
-
-  // Fetch local data
-  async function fetchLocalData() {
-    try {
-      const response = await fetch(config.localDataUrl);
-      if (response.ok) {
-        siteData = await response.json();
-        console.log('QualiaBot: Local data loaded successfully');
-      } else {
-        console.error('QualiaBot: Failed to load local data');
-      }
-    } catch (error) {
-      console.error('QualiaBot: Error loading local data', error);
-    }
-  }
-
-  // Get relevant context from site data
-  function getRelevantContext(query) {
-    if (!siteData || !config.useLocalData) {
-      return '';
-    }
-
-    // Normalize query
-    const normalizedQuery = query.toLowerCase().trim();
-    
-    // Prepare results array with scores
-    let results = [];
-    
-    // Search through pages
-    if (siteData.pages) {
-      siteData.pages.forEach(page => {
-        let score = 0;
-        const pageText = (page.title + ' ' + page.description + ' ' + (page.content || '')).toLowerCase();
-        
-        // Check for exact matches first
-        if (pageText.includes(normalizedQuery)) {
-          score += 10;
-        }
-        
-        // Check for keyword matches
-        const keywords = normalizedQuery.split(/\s+/).filter(k => k.length > 3);
-        keywords.forEach(keyword => {
-          if (pageText.includes(keyword)) {
-            score += 2;
-          }
-        });
-        
-        // If we have a score, add to results
-        if (score > 0) {
-          results.push({
-            score,
-            title: page.title,
-            description: page.description,
-            url: page.url,
-            content: page.content || page.description
-          });
-        }
-      });
-    }
-    
-    // If no results found
-    if (results.length === 0) {
-      return '';
-    }
-    
-    // Sort results by score (highest first)
-    results.sort((a, b) => b.score - a.score);
-    
-    // Take top results
-    const topResults = results.slice(0, 2);
-    
-    // Build context from top results
-    let context = 'Here is some relevant information from the Qualia Solutions website:\n\n';
-    
-    topResults.forEach((result, index) => {
-      context += `Page: ${result.title}\n`;
-      context += `Description: ${result.description}\n`;
-      if (result.content) {
-        const contentSummary = result.content.length > 300 
-          ? result.content.substring(0, 300) + '...' 
-          : result.content;
-        context += `Content: ${contentSummary}\n`;
-      }
-      context += `URL: ${result.url}\n\n`;
-    });
-    
-    return context;
-  }
+  const MAX_DAILY_USAGE = 100;
 
   // Create widget container with styles
   function createWidgetContainer() {
@@ -538,7 +444,7 @@
       
       try {
         // Check daily usage limit
-        if (dailyUsage >= config.maxUsagePerDay) {
+        if (dailyUsage >= MAX_DAILY_USAGE) {
           // Remove typing indicator
           messagesContainer.removeChild(typingIndicator);
           
@@ -546,32 +452,9 @@
           return;
         }
         
-        // Get relevant context from site data
-        const siteContext = getRelevantContext(text);
-        
         // Update usage counter for API call
         dailyUsage++;
         localStorage.setItem(usageKey, dailyUsage.toString());
-        
-        // Create message array with site context
-        const promptMessages = [
-          { role: 'system', content: SYSTEM_PROMPT }
-        ];
-        
-        // Add conversation history (last 4 messages)
-        const historyMessages = messages.slice(-4);
-        promptMessages.push(...historyMessages);
-        
-        // Add site context if available
-        if (siteContext) {
-          promptMessages.push({ 
-            role: 'system', 
-            content: siteContext
-          });
-        }
-        
-        // Add current user query
-        promptMessages.push({ role: 'user', content: text });
         
         // Call Perplexity API with Sonar model
         const response = await fetch('https://api.perplexity.ai/chat/completions', {
@@ -582,10 +465,13 @@
           },
           body: JSON.stringify({
             model: 'sonar',
-            messages: promptMessages,
+            messages: [
+              { role: 'system', content: SYSTEM_PROMPT },
+              ...messages.slice(-5), // Include the last 5 messages for context
+              { role: 'user', content: text }
+            ],
             temperature: 0.7,
-            max_tokens: config.maxTokens,
-            search_context_size: config.searchContextSize
+            max_tokens: config.maxTokens
           })
         });
         
@@ -628,12 +514,7 @@
   }
 
   // Initialize everything
-  async function initWidget() {
-    // Load local data first
-    if (config.useLocalData) {
-      await fetchLocalData();
-    }
-    
+  function initWidget() {
     // Create widget container
     const container = createWidgetContainer();
     
