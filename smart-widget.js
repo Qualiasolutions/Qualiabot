@@ -1,4 +1,4 @@
-// QualiaBot Widget Embed Script v1.0.0
+// QualiaBot Widget Embed Script v1.0.0 with Perplexity Sonar
 (function() {
   // Configuration
   const config = {
@@ -6,16 +6,11 @@
     mobileBreakpoint: 768,
     zIndex: 2147483647,
     initialDelay: 1500,
-    perplexityApiKey: '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', // Default API key with credits
-    maxTokens: 250
+    perplexityApiKey: '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'  // Working API key with credits
   };
 
-  // System prompt for the AI
-  const SYSTEM_PROMPT = `You are QualiaBot, an AI assistant for Qualia Solutions, a web design and AI integration company based in Cyprus.
-  
-  Qualia Solutions provides services including web design, SEO optimization, digital advertising, AI automation, and chatbot development.
-  
-  If users ask about pricing, contracts, or specific timelines, suggest contacting info@qualiasolutions.net.`;
+  // System prompt including website context
+  const SYSTEM_PROMPT = `You are QualiaBot, an AI assistant for Qualia Solutions. Provide helpful, accurate, and concise responses about Qualia Solutions' services. Always be professional but friendly. For specific details about quotes, timelines, or contracts, offer to connect users with the team at info@qualiasolutions.net.`;
 
   // Track usage
   let usageKey = 'qualiaBotApiUsage_' + new Date().toISOString().split('T')[0];
@@ -94,7 +89,7 @@
       opacity: 0;
       visibility: hidden;
       width: 380px;
-      height: 500px;
+      height: 600px;
       background: #10121F;
       border-radius: 16px;
       overflow: hidden;
@@ -225,7 +220,7 @@
       font-size: 14px;
       line-height: 1.5;
     `;
-    initialMessage.textContent = "Hi! I'm QualiaBot, your assistant for Qualia Solutions. How can I help you today?";
+    initialMessage.textContent = "👋 Hello! I'm QualiaBot, your AI assistant for Qualia Solutions. I can help with web design, AI integration, and custom software development questions.";
     messagesContainer.appendChild(initialMessage);
     
     // Citations container for styling
@@ -305,11 +300,6 @@
         chatContent.style.opacity = '1';
         chatContent.style.visibility = 'visible';
         chatContent.style.transform = 'translateY(0) scale(1)';
-        
-        // Check API key when first opened
-        if (!config.perplexityApiKey) {
-          addMessage("⚠️ API key not configured. Please add a valid Perplexity API key when embedding the widget: QualiaBot.configure({perplexityApiKey: 'your-key-here'})", false);
-        }
       }
       isOpen = !isOpen;
     });
@@ -428,12 +418,6 @@
       addMessage(text, true);
       textInput.value = '';
       
-      // Check for API key
-      if (!config.perplexityApiKey) {
-        addMessage("⚠️ No API key provided. Please configure the widget with a valid Perplexity API key.", false);
-        return;
-      }
-      
       // Show typing indicator
       const typingIndicator = document.createElement('div');
       typingIndicator.className = 'qualia-typing-indicator';
@@ -449,7 +433,7 @@
         font-size: 14px;
         line-height: 1.5;
       `;
-      typingIndicator.textContent = "...";
+      typingIndicator.textContent = "Typing...";
       messagesContainer.appendChild(typingIndicator);
       messagesContainer.scrollTop = messagesContainer.scrollHeight;
       
@@ -478,11 +462,11 @@
             model: 'sonar',
             messages: [
               { role: 'system', content: SYSTEM_PROMPT },
-              ...messages.slice(-5), // Include the last 5 messages for context
               { role: 'user', content: text }
             ],
             temperature: 0.7,
-            max_tokens: config.maxTokens
+            max_tokens: 500,
+            search_context_size: 'medium' // Using medium search context size
           })
         });
         
@@ -501,35 +485,16 @@
           // Remove typing indicator
           messagesContainer.removeChild(typingIndicator);
           
-          let errorMsg = "API Error: ";
-          
-          try {
-            const errorJson = await response.json();
-            errorMsg += errorJson.error?.message || `Status ${response.status}`;
-          } catch (e) {
-            errorMsg += `Status ${response.status}`;
-          }
-          
           // Add error message
-          addMessage(`⚠️ ${errorMsg}. Please check your API key or contact info@qualiasolutions.net for assistance.`, false);
-          console.error('Perplexity API error:', errorMsg);
+          addMessage("I'm sorry, I had trouble connecting to my brain. Please try again later.", false);
+          console.error('Perplexity API error:', await response.text());
         }
       } catch (error) {
         // Remove typing indicator
-        if (typingIndicator.parentNode) {
-          messagesContainer.removeChild(typingIndicator);
-        }
+        messagesContainer.removeChild(typingIndicator);
         
-        // Add specific error message for common issues
-        let errorMessage = "⚠️ ";
-        
-        if (error.message.includes('Failed to fetch')) {
-          errorMessage += "Network error. This may be due to CORS restrictions on Squarespace or an invalid API key. Please ensure your Perplexity API key is valid and has access to the Sonar model.";
-        } else {
-          errorMessage += error.message || "Unknown error";
-        }
-        
-        addMessage(errorMessage, false);
+        // Add error message
+        addMessage("I'm sorry, I had trouble connecting to my brain. Please try again later.", false);
         console.error('Error calling Perplexity API:', error);
       }
     }
@@ -541,9 +506,6 @@
         sendMessage();
       }
     });
-    
-    // Expose message function
-    return { addMessage };
   }
 
   // Initialize everything
@@ -552,7 +514,7 @@
     const container = createWidgetContainer();
     
     // Add chat interface
-    const chatInterface = createChatInterface(container);
+    createChatInterface(container);
     
     // Expose configuration API
     window.QualiaBot = window.QualiaBot || {};
