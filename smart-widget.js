@@ -6,7 +6,7 @@
     mobileBreakpoint: 768,
     zIndex: 2147483647,
     initialDelay: 1500,
-    perplexityApiKey: '', // Blank by default - user must provide via configure
+    perplexityApiKey: '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', // Default API key with credits
     maxTokens: 250
   };
 
