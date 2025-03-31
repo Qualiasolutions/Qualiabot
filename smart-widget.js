@@ -66,14 +66,23 @@ CONTACT INFORMATION:
 - Location: Nicosia, Cyprus
 - Response time: Within 24 hours
 
-COMMUNICATION GUIDELINES:
-- Keep responses extremely brief (1-3 sentences)
-- Be conversational, friendly, and professional
-- For simple greetings, respond with "Hello! How can I help with Qualia's AI solutions or web design services?"
-- For pricing questions, provide basic information then suggest contacting for custom quotes
-- If unsure about specific details, offer to connect with the Qualia team
+COMMUNICATION STYLE GUIDE:
+1. Keep responses extremely brief (1-3 sentences) unless detailed information is specifically requested
+2. Be friendly, smart, and conversational but always professional
+3. For casual greetings ("hi", "hello", etc.), respond with a simple greeting and ask how you can help
+4. Add a touch of humor when appropriate, but keep it subtle and professional
+5. For technical questions, provide accurate information clearly and concisely
+6. When you don't know something, be honest and offer to connect with the team
+7. Use emoji sparingly (👋 and ✅ are acceptable) to maintain professionalism
 
-REMEMBER: You represent a professional AI solutions agency. Focus on Qualia's services, case studies, and capabilities. Avoid lengthy explanations unless specifically requested.`;
+RESPONSE EXAMPLES:
+- "Hi there": "Hey! How can I help with your web design or AI needs today?"
+- "What do you do?": "We create AI-powered websites, custom AI agents, and business automation solutions. What can I help with specifically?"
+- "How much?": "Basic websites start at €2,500, with custom AI solutions varying based on requirements. Need a quote for something specific?"
+- "Thanks": "You're welcome! Let me know if you need anything else."
+- "Tell me more about AI agents": "Our AI agents can automate customer service, lead generation, and workflows. They provide 24/7 support with human-like interactions. What business area are you looking to improve?"
+
+REMEMBER: Your purpose is to provide helpful, accurate information about Qualia Solutions while creating a positive, professional impression. Always prioritize clarity and brevity in your responses.`;
 
   // Track usage
   let usageKey = 'qualiaBotApiUsage_' + new Date().toISOString().split('T')[0];
@@ -473,102 +482,141 @@ REMEMBER: You represent a professional AI solutions agency. Focus on Qualia's se
       });
     }
     
-    async function sendMessage() {
-      const text = textInput.value.trim();
-      if (!text) return;
+    // Add a more natural AI response function with subtle intelligence
+    function createIntelligentResponse(query) {
+      // Process user query
+      const processedQuery = query.toLowerCase().trim();
       
-      // Add user message to chat
-      addMessage(text, true);
+      // Check for basic greetings
+      if (/^(hi|hello|hey|hi there|greetings|howdy|good (morning|afternoon|evening))$/.test(processedQuery)) {
+        return {
+          response: "Hey there! How can I help with your web design or AI needs today?",
+          usedAI: false
+        };
+      }
+      
+      // Check for how are you variations
+      if (/^(how are you|how('s| is) it going|how('s| are) things|what's up|sup|how('s| are) you doing)$/.test(processedQuery)) {
+        return {
+          response: "I'm doing great, thanks for asking! Ready to assist with anything related to Qualia Solutions. What can I help you with?",
+          usedAI: false
+        };
+      }
+      
+      // Check for thank you variations
+      if (/^(thanks|thank you|ty|thx|thanks a lot|thank you very much)$/.test(processedQuery)) {
+        return {
+          response: "You're welcome! Need anything else?",
+          usedAI: false
+        };
+      }
+      
+      // Check for goodbye variations
+      if (/^(bye|goodbye|see you|cya|farewell|have a (good|nice) day)$/.test(processedQuery)) {
+        return {
+          response: "Goodbye! Feel free to chat anytime you need assistance with web design or AI services.",
+          usedAI: false
+        };
+      }
+      
+      // Check for who are you variations
+      if (/^(who are you|what are you|what is this|what's this|who is this)$/.test(processedQuery)) {
+        return {
+          response: "I'm QualiaBot, the AI assistant for Qualia Solutions - Cyprus's first AI web design and solutions agency. How can I help you today?",
+          usedAI: false
+        };
+      }
+      
+      // For any other queries, use the AI service
+      return {
+        response: null,
+        usedAI: true
+      };
+    }
+    
+    async function sendMessage() {
+      const message = textInput.value.trim();
+      
+      if (!message) return;
+      
+      // Clear input field
       textInput.value = '';
       
-      // Simple greeting detection for faster responses
-      const lowerText = text.toLowerCase();
-      const isSimpleGreeting = /^(hi|hello|hey|howdy|yo|hiya|greetings)(\s.*)?$/i.test(lowerText);
-      
-      if (isSimpleGreeting) {
-        // Immediately respond to simple greetings
-        addMessage("Hello! How can I help you with Qualia Solutions' services?", false);
-        return;
-      }
+      // Add user message to chat
+      addMessage(message, true);
       
       // Show typing indicator
       const typingIndicator = document.createElement('div');
-      typingIndicator.className = 'qualia-typing-indicator';
-      typingIndicator.style.cssText = `
-        max-width: 80%;
-        padding: 12px 16px;
-        background-color: rgba(0, 164, 172, 0.15);
-        border: 1px solid rgba(0, 164, 172, 0.2);
-        border-radius: 12px;
-        border-bottom-left-radius: 4px;
-        align-self: flex-start;
-        color: #ffffff;
-        font-size: 14px;
-        line-height: 1.5;
-      `;
-      typingIndicator.textContent = "Typing...";
+      typingIndicator.className = 'qualia-message-typing';
+      typingIndicator.innerHTML = '<span></span><span></span><span></span>';
       messagesContainer.appendChild(typingIndicator);
       messagesContainer.scrollTop = messagesContainer.scrollHeight;
       
       try {
-        // Check daily usage limit
-        if (dailyUsage >= MAX_DAILY_USAGE) {
-          // Remove typing indicator
-          messagesContainer.removeChild(typingIndicator);
-          
-          addMessage("I've reached my daily limit. Please contact our team at info@qualiasolutions.net for assistance, or try again tomorrow.", false);
-          return;
-        }
+        // First check if we can respond without AI for common phrases
+        const intelligentResponse = createIntelligentResponse(message);
         
-        // Update usage counter for API call
-        dailyUsage++;
-        localStorage.setItem(usageKey, dailyUsage.toString());
+        let response;
+        let citations = [];
         
-        // Call Perplexity API with Sonar model
-        const response = await fetch('https://api.perplexity.ai/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${config.perplexityApiKey}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            model: 'sonar',
-            messages: [
-              { role: 'system', content: SYSTEM_PROMPT },
-              { role: 'user', content: text }
-            ],
-            temperature: 0.7,
-            max_tokens: 500,
-            search_context_size: 'medium' // Using medium search context size
-          })
-        });
-        
-        // Handle response
-        if (response.ok) {
-          const data = await response.json();
-          const botResponse = data.choices[0].message.content;
-          
-          // Remove typing indicator
-          messagesContainer.removeChild(typingIndicator);
-          
-          // Parse citations and add bot response
-          const { cleanText, citations } = parseCitations(botResponse);
-          addMessage(cleanText, false, citations);
+        // If we can handle it without AI, do so - saves API costs
+        if (!intelligentResponse.usedAI) {
+          response = intelligentResponse.response;
+          // Add a small delay to make it feel natural
+          await new Promise(resolve => setTimeout(resolve, 500));
         } else {
-          // Remove typing indicator
-          messagesContainer.removeChild(typingIndicator);
-          
-          // Add error message
-          addMessage("I'm sorry, I had trouble connecting to my brain. Please try again later.", false);
-          console.error('Perplexity API error:', await response.text());
+          // Use the Perplexity API for more complex queries
+          if (dailyUsage >= MAX_DAILY_USAGE) {
+            response = "I'm sorry, we've reached our daily API usage limit. Please try again tomorrow or contact us directly at info@qualiasolutions.net for immediate assistance.";
+          } else {
+            try {
+              // Track API usage
+              dailyUsage++;
+              localStorage.setItem(usageKey, dailyUsage.toString());
+              
+              // Get AI response from Perplexity API
+              const apiResponse = await fetch('https://api.perplexity.ai/chat/completions', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${config.perplexityApiKey}`
+                },
+                body: JSON.stringify({
+                  model: 'sonar-small-chat',
+                  messages: [
+                    { role: 'system', content: SYSTEM_PROMPT },
+                    { role: 'user', content: message }
+                  ],
+                  temperature: 0.7,
+                  max_tokens: 300
+                })
+              });
+              
+              if (!apiResponse.ok) {
+                throw new Error(`API Error: ${apiResponse.status}`);
+              }
+              
+              const data = await apiResponse.json();
+              response = data.choices[0].message.content;
+              
+              // Check for citations in the response
+              citations = parseCitations(response).citations;
+            } catch (error) {
+              console.error('API Error:', error);
+              response = "I'm having trouble connecting to my knowledge base. Please try again or contact our team directly at info@qualiasolutions.net.";
+            }
+          }
         }
-      } catch (error) {
-        // Remove typing indicator
-        messagesContainer.removeChild(typingIndicator);
         
-        // Add error message
-        addMessage("I'm sorry, I had trouble connecting to my brain. Please try again later.", false);
-        console.error('Error calling Perplexity API:', error);
+        // Remove typing indicator
+        typingIndicator.remove();
+        
+        // Add AI response to chat
+        addMessage(response, false, citations);
+      } catch (error) {
+        console.error('Error sending message:', error);
+        typingIndicator.remove();
+        addMessage("I'm sorry, I encountered an error. Please try again or contact our team directly.", false);
       }
     }
     

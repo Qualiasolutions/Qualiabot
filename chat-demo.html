@@ -75,6 +75,28 @@
     .chat-input button:hover {
       background-color: rgba(0, 164, 172, 1);
     }
+    .loading {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .loading-dot {
+      width: 6px;
+      height: 6px;
+      background-color: rgba(0, 164, 172, 0.6);
+      border-radius: 50%;
+      animation: pulse 1.5s infinite;
+    }
+    .loading-dot:nth-child(2) {
+      animation-delay: 0.2s;
+    }
+    .loading-dot:nth-child(3) {
+      animation-delay: 0.4s;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 0.4; transform: scale(0.8); }
+      50% { opacity: 1; transform: scale(1); }
+    }
   </style>
 </head>
 <body>
@@ -93,16 +115,65 @@
       const chatMessages = document.getElementById('chat-messages');
       const userInput = document.getElementById('user-input');
       const sendButton = document.getElementById('send-button');
+      let sitemapData = null;
+      let isProcessing = false;
 
-      // Demo responses
-      const botResponses = [
-        "Qualia Solutions specializes in web design and development with a focus on modern, responsive websites.",
-        "Our AI integration services can help automate customer support, content creation, and data analysis for your business.",
-        "We create custom software solutions tailored to your specific business needs.",
-        "E-commerce development is one of our specialties, with expertise in payment processing and inventory management.",
-        "Our team can help optimize your website for search engines to improve your online visibility.",
-        "I'd be happy to connect you with one of our experts who can provide more detailed information about your project needs."
-      ];
+      // Load sitemap data
+      async function loadSitemapData() {
+        try {
+          const response = await fetch('./sitemapData.json');
+          if (response.ok) {
+            sitemapData = await response.json();
+            console.log('Sitemap data loaded successfully');
+          } else {
+            console.error('Failed to load sitemap data');
+          }
+        } catch (error) {
+          console.error('Error loading sitemap data:', error);
+        }
+      }
+
+      // Call this on page load
+      loadSitemapData();
+
+      // More natural and concise responses
+      const botResponses = {
+        greetings: [
+          "Hi there! How can I help?",
+          "Hello! What can I assist with today?",
+          "Hey! What's on your mind?"
+        ],
+        services: [
+          "We specialize in AI web design, custom software, and automation. What interests you?",
+          "Our services include intelligent web design, AI integration, and business automation. Need details?",
+          "We offer next-gen websites, AI agents, and digital marketing. Which would you like to know more about?"
+        ],
+        expertise: [
+          "We're Cyprus's first AI web design agency - experts in intelligent automation and UX.",
+          "We specialize in AI solutions for businesses in Cyprus and internationally.",
+          "Our team combines tech expertise with business understanding to create intelligent solutions."
+        ],
+        contact: [
+          "You can reach us at info@qualiasolutions.net or +357 99 111 668.",
+          "Need a consultation? I'll connect you with our team.",
+          "We'd love to discuss your project. How should we contact you?"
+        ],
+        thanks: [
+          "You're welcome!",
+          "Anytime!",
+          "Happy to help!"
+        ],
+        humor: [
+          "I'm not just artificially intelligent, I'm artificially charming too!",
+          "I'd tell you a joke about AI, but my humor algorithm is still learning.",
+          "If I were a human, I'd probably be the one asking you for tech support!"
+        ],
+        default: [
+          "I can help with web design, AI solutions, or answer questions about Qualia.",
+          "Tell me more about what you're looking for?",
+          "Would you like to know about our services or past projects?"
+        ]
+      };
 
       function addMessage(text, isUser) {
         const message = document.createElement('div');
@@ -113,27 +184,164 @@
         chatMessages.scrollTop = chatMessages.scrollHeight;
       }
 
-      function getRandomResponse() {
-        return botResponses[Math.floor(Math.random() * botResponses.length)];
+      function addLoadingIndicator() {
+        const loadingMessage = document.createElement('div');
+        loadingMessage.classList.add('message', 'bot-message', 'loading');
+        loadingMessage.id = 'loading-indicator';
+        
+        for (let i = 0; i < 3; i++) {
+          const dot = document.createElement('div');
+          dot.classList.add('loading-dot');
+          loadingMessage.appendChild(dot);
+        }
+        
+        chatMessages.appendChild(loadingMessage);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+      }
+
+      function removeLoadingIndicator() {
+        const indicator = document.getElementById('loading-indicator');
+        if (indicator) {
+          indicator.remove();
+        }
+      }
+
+      function searchSitemapData(query) {
+        if (!sitemapData || !sitemapData.pages) return null;
+        
+        query = query.toLowerCase();
+        let bestMatch = null;
+        let highestScore = 0;
+        
+        for (const page of sitemapData.pages) {
+          // Calculate a simple relevance score
+          let score = 0;
+          
+          // Check title match
+          if (page.title && page.title.toLowerCase().includes(query)) {
+            score += 5;
+          }
+          
+          // Check content match
+          if (page.content && page.content.toLowerCase().includes(query)) {
+            score += 3;
+            
+            // Extract a relevant excerpt
+            const contentLower = page.content.toLowerCase();
+            const index = contentLower.indexOf(query);
+            if (index !== -1) {
+              // Get a window of text around the match
+              const start = Math.max(0, index - 100);
+              const end = Math.min(page.content.length, index + query.length + 100);
+              const excerpt = page.content.substring(start, end);
+              
+              // Store the excerpt with the page
+              page.excerpt = excerpt;
+              
+              // Increase score for better matches
+              score += 2;
+            }
+          }
+          
+          // Check headings match
+          if (page.headings) {
+            for (const heading of page.headings) {
+              if (heading.text.toLowerCase().includes(query)) {
+                score += 4;
+              }
+            }
+          }
+          
+          if (score > highestScore) {
+            highestScore = score;
+            bestMatch = page;
+          }
+        }
+        
+        return highestScore > 0 ? bestMatch : null;
+      }
+
+      async function getResponse(text) {
+        // Clean up text
+        text = text.toLowerCase().trim();
+        
+        // Check for greetings
+        if (text.match(/^(hi|hello|hey|greetings|good (morning|afternoon|evening))/)) {
+          return botResponses.greetings[Math.floor(Math.random() * botResponses.greetings.length)];
+        }
+        
+        // Check for thanks/appreciation
+        if (text.match(/(thanks|thank you|appreciate it)/)) {
+          return botResponses.thanks[Math.floor(Math.random() * botResponses.thanks.length)];
+        }
+        
+        // Check for humor requests
+        if (text.match(/(joke|funny|humor|tell me something funny)/)) {
+          return botResponses.humor[Math.floor(Math.random() * botResponses.humor.length)];
+        }
+        
+        // Check for services
+        if (text.match(/(service|offer|provide|do you do|what do you do)/)) {
+          return botResponses.services[Math.floor(Math.random() * botResponses.services.length)];
+        }
+        
+        // Check for expertise
+        if (text.match(/(expert|experience|specialize|good at|know about)/)) {
+          return botResponses.expertise[Math.floor(Math.random() * botResponses.expertise.length)];
+        }
+        
+        // Check for contact requests
+        if (text.match(/(contact|speak|talk|consult|meet|book|schedule|email|phone)/)) {
+          return botResponses.contact[Math.floor(Math.random() * botResponses.contact.length)];
+        }
+        
+        // Check for agent requests
+        if (text.match(/(agent|human|person|real|live)/)) {
+          return "I'll connect you with a customer service agent shortly. Please wait a moment.";
+        }
+        
+        // Search in sitemap data
+        const matchedPage = searchSitemapData(text);
+        if (matchedPage) {
+          // Build a response based on the matched page
+          if (matchedPage.excerpt) {
+            return `Based on our website: ${matchedPage.excerpt}... You can read more at ${matchedPage.url}`;
+          } else {
+            // Use the page title and description
+            return `You might find this page helpful: "${matchedPage.title}". ${matchedPage.description} Learn more at ${matchedPage.url}`;
+          }
+        }
+        
+        // Default response
+        return botResponses.default[Math.floor(Math.random() * botResponses.default.length)];
       }
 
       function handleSend() {
+        if (isProcessing) return;
+        
         const text = userInput.value.trim();
         if (text) {
           addMessage(text, true);
           userInput.value = '';
           
-          // Simulate typing delay
-          setTimeout(() => {
-            // Check for agent request
-            if (text.toLowerCase().includes('agent') || 
-                text.toLowerCase().includes('human') || 
-                text.toLowerCase().includes('person')) {
-              addMessage("I'll connect you with a customer service agent shortly. Please wait a moment.", false);
-            } else {
-              addMessage(getRandomResponse(), false);
+          // Show loading indicator
+          addLoadingIndicator();
+          isProcessing = true;
+          
+          // Simulate typing delay with a minimum time to make it feel natural
+          setTimeout(async () => {
+            try {
+              const response = await getResponse(text);
+              removeLoadingIndicator();
+              addMessage(response, false);
+            } catch (error) {
+              removeLoadingIndicator();
+              addMessage("Sorry, I'm having trouble processing that right now. Could you try again?", false);
+              console.error("Error generating response:", error);
+            } finally {
+              isProcessing = false;
             }
-          }, 1000);
+          }, 800); // Minimum delay of 800ms to simulate natural typing
         }
       }
 
